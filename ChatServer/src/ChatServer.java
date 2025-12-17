@@ -5,7 +5,6 @@ import java.util.*;
 
 public class ChatServer {
     private final int port;
-    private static final List<ClientHandler> CLIENT_HANDLER_LIST = Collections.synchronizedList(new LinkedList<>());
     private static final Map<String, ClientHandler> CLIENT_HANDLER_MAP = Collections.synchronizedMap(new HashMap<>());
 
     public ChatServer(int port) {
@@ -23,8 +22,7 @@ public class ChatServer {
 
                 System.out.println("New client connected with IP " + hostIPAddress + ".");
 
-                ClientHandler clientHandler = new ClientHandler(clientSocket, CLIENT_HANDLER_LIST);
-                CLIENT_HANDLER_LIST.add(clientHandler);
+                ClientHandler clientHandler = new ClientHandler(clientSocket, CLIENT_HANDLER_MAP);
 
                 new Thread(clientHandler).start();
             }
