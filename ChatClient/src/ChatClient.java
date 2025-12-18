@@ -23,9 +23,9 @@ public class ChatClient {
 
             listenerThread.join();
 
-            if (!socket.isClosed()) socket.close();
-
-            writerThread.join();
+            if (!socket.isClosed()) {
+                socket.close();
+            }
 
             System.out.println("Successfully closed connection");
         }

@@ -5,26 +5,6 @@ import java.net.Socket;
 import java.util.*;
 import java.io.BufferedReader;
 
-enum CommandType{
-    SEND_PRIVATE_MESSAGE(3),
-    BROADCAST_MESSAGE( 2),
-    LIST_USERS( 1),
-    BLOCK_USER( 2),
-    UNBLOCK_USER(2),
-    HELP( 1),
-    INVALID_COMMAND( 1),
-    EXIT(1);
-
-
-    private final int argCount;
-
-    CommandType( int argCount) {
-        this.argCount = argCount;
-    }
-
-    public int getArgCount() { return this.argCount; }
-}
-
 public class ClientHandler implements Runnable {
 
     private final Socket clientSocket;
@@ -34,7 +14,7 @@ public class ClientHandler implements Runnable {
     private BufferedReader reader;
     private String clientName;
 
-    private static String SERVER_PREFIX = Colors.GREEN + "[SERVER]: " + Colors.RESET;
+    private static final String SERVER_PREFIX = Colors.GREEN + "[SERVER]: " + Colors.RESET;
 
     public ClientHandler(Socket clientSocket, Map<String, ClientHandler> clientMap) {
         this.clientSocket = clientSocket;
@@ -74,7 +54,7 @@ public class ClientHandler implements Runnable {
             writer.println(SERVER_PREFIX + Colors.CYAN + "Welcome! Please enter your username:" + Colors.RESET);
 
             String enteredUsername = reader.readLine();
-            if (enteredUsername == null) return;
+            if (enteredUsername == null) throw new IOException("Client Disconnected");
 
             while(true) {
                 synchronized(clientMap) {
@@ -82,7 +62,7 @@ public class ClientHandler implements Runnable {
                         writer.println(SERVER_PREFIX + Colors.RED + "Username already taken. Try again:" + Colors.RESET);
 
                         enteredUsername = reader.readLine();
-                        if (enteredUsername == null) return;
+                        if (enteredUsername == null) throw new IOException("Client Disconnected");
                     }
                     else {
                         this.clientName = enteredUsername;
@@ -131,7 +111,7 @@ public class ClientHandler implements Runnable {
         String help = Colors.YELLOW + "\n--- Available Commands ---\n" + Colors.RESET +
                 Colors.CYAN + "/help" + Colors.RESET + "          - Show this menu\n" +
                 Colors.CYAN + "/list" + Colors.RESET + "          - List online users\n" +
-                Colors.CYAN + "/msg <u) <m>" + Colors.RESET + "   - Private message\n" +
+                Colors.CYAN + "/msg <u> <m>" + Colors.RESET + "   - Private message\n" +
                 Colors.CYAN + "/msgall <m>" + Colors.RESET + "     - Global message\n" +
                 Colors.CYAN + "/block <u>" + Colors.RESET + "      - Block a user\n" +
                 Colors.CYAN + "/exit" + Colors.RESET + "          - Leave chat\n";
@@ -262,10 +242,12 @@ public class ClientHandler implements Runnable {
      */
     private void closeConnection() {
         try {
-            clientMap.remove(clientName);
-            broadcastMessage(SERVER_PREFIX + clientName + " has left the server <");
+            if (clientMap.containsKey(clientName)) {
+                clientMap.remove(clientName);
+                broadcastMessage(SERVER_PREFIX + clientName + " has left the server");
+            }
 
-            System.out.println(clientName + " has left the server.");
+            System.out.println(clientName + " has left the server");
 
             if (writer != null) writer.close();
             if (reader != null) reader.close();
