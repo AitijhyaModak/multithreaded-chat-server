@@ -16,16 +16,16 @@ public class ChatClient {
             System.out.println("----Connected to chat-server----");
 
             Thread listenerThread = new Thread(new Listener(socket));
-            Thread readerThread = new Thread(new Writer(socket));
+            Thread writerThread = new Thread(new Writer(socket));
 
             listenerThread.start();
-            readerThread.start();
+            writerThread.start();
 
-            readerThread.join();
+            listenerThread.join();
 
             if (!socket.isClosed()) socket.close();
 
-            listenerThread.join();
+            writerThread.join();
 
             System.out.println("Successfully closed connection");
         }

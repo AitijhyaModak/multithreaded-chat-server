@@ -34,6 +34,8 @@ public class ClientHandler implements Runnable {
     private BufferedReader reader;
     private String clientName;
 
+    private static String SERVER_PREFIX = Colors.GREEN + "[SERVER]: " + Colors.RESET;
+
     public ClientHandler(Socket clientSocket, Map<String, ClientHandler> clientMap) {
         this.clientSocket = clientSocket;
         this.clientMap = clientMap;
@@ -69,7 +71,7 @@ public class ClientHandler implements Runnable {
             reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
             writer = new PrintWriter(clientSocket.getOutputStream(), true);
 
-            writer.println("SERVER: Welcome to chat-server. Please enter your username: ");
+            writer.println(SERVER_PREFIX + Colors.CYAN + "Welcome! Please enter your username:" + Colors.RESET);
 
             String enteredUsername = reader.readLine();
             if (enteredUsername == null) return;
@@ -77,7 +79,7 @@ public class ClientHandler implements Runnable {
             while(true) {
                 synchronized(clientMap) {
                     if (clientMap.containsKey(enteredUsername)) {
-                        writer.println("SERVER: Username taken. <");
+                        writer.println(SERVER_PREFIX + Colors.RED + "Username already taken. Try again:" + Colors.RESET);
 
                         enteredUsername = reader.readLine();
                         if (enteredUsername == null) return;
@@ -90,8 +92,8 @@ public class ClientHandler implements Runnable {
                 }
             }
 
-            writer.println("SERVER: Your username is set to " + enteredUsername + ". <");
-            broadcastMessage("SERVER: [" + clientName + "] has joined the server. <");
+            writer.println(SERVER_PREFIX + "Username set to " + Colors.GREEN + clientName + Colors.RESET + ".");
+            broadcastMessage(SERVER_PREFIX + Colors.YELLOW + "✦ " + clientName + " has joined the chat ✦" + Colors.RESET);
 
             String message;
 
@@ -126,23 +128,21 @@ public class ClientHandler implements Runnable {
      * Handles /help command
      */
     private void handleHelpCommand() {
-        String HELP_MESSAGE = """
-                The list of available commands:
-                /help: Lists available commands
-                /msg <username> <message>: Sends <message> to <username>
-                /msgall <message>: Broadcasts <message> to everyone
-                /block <username>: Blocks <username> for you. You won't be able to see any messages from <username>
-                /unblock <username>: Unblocks <username> for you
-                /list: Lists currently online users
-                """;
-        sendMessage("SERVER: " + HELP_MESSAGE);
+        String help = Colors.YELLOW + "\n--- Available Commands ---\n" + Colors.RESET +
+                Colors.CYAN + "/help" + Colors.RESET + "          - Show this menu\n" +
+                Colors.CYAN + "/list" + Colors.RESET + "          - List online users\n" +
+                Colors.CYAN + "/msg <u) <m>" + Colors.RESET + "   - Private message\n" +
+                Colors.CYAN + "/msgall <m>" + Colors.RESET + "     - Global message\n" +
+                Colors.CYAN + "/block <u>" + Colors.RESET + "      - Block a user\n" +
+                Colors.CYAN + "/exit" + Colors.RESET + "          - Leave chat\n";
+        sendMessage(SERVER_PREFIX + help);
     }
 
     /**
      * Handles an invalid command
      */
     private void handleInvalidCommand() {
-        sendMessage("SERVER: Invalid Command. Type '\\help' to list all available commands and arguments <");
+        sendMessage(SERVER_PREFIX + Colors.RED + "Invalid Command. Type " + Colors.YELLOW + "/help" + Colors.RED + " for list." + Colors.RESET);
     }
 
     /**
@@ -154,12 +154,12 @@ public class ClientHandler implements Runnable {
         int requiredLength = CommandType.BLOCK_USER.getArgCount();
         String[] args =  message.split(" ", requiredLength);
         if (args.length < requiredLength) {
-            writer.println("SERVER: Invalid message format. The format for //block is '//block <username>'. <");
+            sendMessage(SERVER_PREFIX + Colors.RED + "Usage: /block <username>" + Colors.RESET);
             return;
         }
 
         blockList.add(args[1]);
-        sendMessage("SERVER: " + args[1] + " successfully blocked. <");
+        sendMessage(SERVER_PREFIX + "User " + Colors.GREEN + args[1] + Colors.RESET + " blocked.");
     }
 
     /**
@@ -171,23 +171,23 @@ public class ClientHandler implements Runnable {
         String[] args =  message.split(" ", requiredLength);
 
         if (args.length < requiredLength) {
-            writer.println("SERVER: Invalid message format. The format for //block is '//block <username>'. <");
+            sendMessage(SERVER_PREFIX + Colors.RED + "Usage: /unblock <username>" + Colors.RESET);
             return;
         }
         blockList.remove(args[1]);
-        sendMessage("SERVER: " + args[1] + " successfully unblocked. <");
+        sendMessage(SERVER_PREFIX + "User " + Colors.GREEN + args[1] + Colors.RESET + " unblocked.");
     }
 
     /**
      * Handles /list command.
      */
     private void handleListCommand() {
-        StringBuilder fullMessage = new StringBuilder();
+        StringBuilder users = new StringBuilder();
         synchronized (clientMap) {
-            for (ClientHandler handler: clientMap.values()) fullMessage.append(handler.getClientName()).append("\n");
+            for (ClientHandler handler: clientMap.values()) users.append(handler.getClientName()).append("\n");
         }
 
-        sendMessage(fullMessage.toString());
+        sendMessage(SERVER_PREFIX + Colors.CYAN + "Online: " + Colors.RESET + users);
     }
 
     /**
@@ -195,11 +195,13 @@ public class ClientHandler implements Runnable {
      * @param message The message that has to be broadcasted.
      */
     private void handleMessageAllCommand(String message) {
-        int requiredLength = CommandType.BROADCAST_MESSAGE.getArgCount();
-        String[] args =  message.split(" ", requiredLength);
-
-        if (args.length < requiredLength) writer.println("SERVER: Invalid Command: Format for '//msgall' is '//msgall <message>'. <");
-        else broadcastMessage("[" + clientName + "]: " + args[1]);
+        int limit = CommandType.BROADCAST_MESSAGE.getArgCount();
+        String[] args = message.split(" ", limit);
+        if (args.length < limit) {
+            sendMessage(SERVER_PREFIX + Colors.RED + "Usage: /msgall <message>" + Colors.RESET);
+        } else {
+            broadcastMessage(Colors.PURPLE + "[Global] " + clientName + ": " + Colors.RESET + Colors.CYAN + args[1] + Colors.RESET);
+        }
     }
 
     /**
@@ -211,7 +213,7 @@ public class ClientHandler implements Runnable {
         String[] args = message.split(" ", requiredLength);
 
         if (args.length < requiredLength) {
-            sendMessage("SERVER: Usage: /msg <username> <message>");
+            sendMessage(SERVER_PREFIX +  "Usage: /msg <username> <message>");
             return;
         }
 
@@ -221,9 +223,9 @@ public class ClientHandler implements Runnable {
         ClientHandler target = clientMap.get(targetName);
 
         if (target != null) {
-            if (!target.blockList.contains(this.clientName)) target.sendMessage("[Private from " + clientName + "]: " + content);
+            if (!target.blockList.contains(this.clientName)) target.sendMessage(Colors.BLUE + "[Private] " + clientName + ": " + Colors.RESET + Colors.CYAN + args[2] + Colors.RESET);
         }
-        else sendMessage("SERVER: User " + targetName + " is not online. <");
+        else sendMessage(SERVER_PREFIX + Colors.RED + "User " + targetName + " not found." + Colors.RESET);
     }
 
     /**
@@ -261,7 +263,7 @@ public class ClientHandler implements Runnable {
     private void closeConnection() {
         try {
             clientMap.remove(clientName);
-            broadcastMessage("SERVER: " + clientName + " has left the server <");
+            broadcastMessage(SERVER_PREFIX + clientName + " has left the server <");
 
             System.out.println(clientName + " has left the server.");
 
