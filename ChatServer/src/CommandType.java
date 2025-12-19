@@ -6,8 +6,8 @@ public enum CommandType {
     UNBLOCK_USER(2),
     HELP( 1),
     INVALID_COMMAND( 1),
+    FILE_TRANSFER(3),
     EXIT(1);
-
 
     private final int argCount;
 

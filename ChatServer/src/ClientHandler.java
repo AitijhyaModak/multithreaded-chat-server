@@ -1,19 +1,15 @@
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.Socket;
 import java.util.*;
-import java.io.BufferedReader;
 
 public class ClientHandler implements Runnable {
-
     private final Socket clientSocket;
     private final Map<String, ClientHandler> clientMap;
     public Set<String> blockList;
     private PrintWriter writer;
     private BufferedReader reader;
     private String clientName;
-
+    private final static String DIR_NAME = "received files";
     private static final String SERVER_PREFIX = Colors.GREEN + "[SERVER]: " + Colors.RESET;
 
     public ClientHandler(Socket clientSocket, Map<String, ClientHandler> clientMap) {
@@ -41,6 +37,7 @@ public class ClientHandler implements Runnable {
             case "/unblock" -> CommandType.UNBLOCK_USER;
             case "/help" -> CommandType.HELP;
             case "/exit" -> CommandType.EXIT;
+            case "@" -> CommandType.FILE_TRANSFER;
             default -> CommandType.INVALID_COMMAND;
         };
     }
@@ -78,7 +75,7 @@ public class ClientHandler implements Runnable {
             String message;
 
             while((message = reader.readLine()) != null) {
-                handleMessage(message);
+                handleMessage(message, clientSocket);
             }
         }
         catch(IOException e) {
@@ -89,7 +86,7 @@ public class ClientHandler implements Runnable {
         }
     }
 
-    private void handleMessage(String message) {
+    private void handleMessage(String message, Socket socket) throws IOException {
         CommandType type = getCommandType(message);
 
         switch (type) {
@@ -100,8 +97,20 @@ public class ClientHandler implements Runnable {
             case BLOCK_USER -> handleBlockCommand(message);
             case UNBLOCK_USER -> handleUnblockCommand(message);
             case EXIT -> handleExitCommand();
+            case FILE_TRANSFER -> handleFileTransfer(message, socket);
             default -> handleInvalidCommand();
         }
+    }
+
+    private void handleFileTransfer(String message, Socket socket) throws IOException {
+        String[] args = message.split(" ", 3);
+        System.out.println(args[0]);
+        System.out.println(args[1]);
+        System.out.println(args[2]);
+        long fileSize = Long.parseLong(args[2]);
+        String fileName = args[1];
+
+        receiveFile(fileName, fileSize);
     }
 
     /**
@@ -256,5 +265,34 @@ public class ClientHandler implements Runnable {
         catch (IOException e) {
             System.out.println("Error closing resources for " + clientName + ": " + e.getMessage());
         }
+    }
+
+    /**
+     * Receives a file.
+     * @param fileName Name of file to download.
+     * @param expectedSize Expected size of file to download.
+     * @throws IOException
+     */
+    public void receiveFile(String fileName, Long expectedSize) throws IOException {
+        File dir = new File(DIR_NAME);
+        if (!dir.exists()) dir.mkdir();
+
+        File outputFile = new File(dir, fileName);
+
+        BufferedInputStream bis = new BufferedInputStream(clientSocket.getInputStream());
+        BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream(outputFile));
+
+        Long remaining = expectedSize;
+        byte[] buffer = new byte[8192];
+
+        while(remaining > 0) {
+            long sizeToRead = Math.min(remaining, 8192);
+            int sizeRead = bis.read(buffer, 0, (int)sizeToRead);
+            remaining -= sizeRead;
+            bos.write(buffer, 0, sizeRead);
+        }
+
+        bos.flush();
+        bos.close();
     }
 }
