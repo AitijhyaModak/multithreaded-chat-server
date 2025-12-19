@@ -4,9 +4,9 @@ A real-time chat application built using Java Sockets. This project features a c
 
 ## Features
 * **Multi-Client Support:** Handle many users at once using a thread-per-client model.
-* **ANSI Colored UI:** Distinct colors for Server alerts, Private messages, and Global chat.
 * **Private Messaging:** Send direct messages to specific users.
 * **User Blocking:** Feature to ignore messages from specific participants.
+* **File Transfer** Basic functionality of sending files to server.
 
 ## Concepts Used
 * **Networking:** TCP/IP Sockets, Input/Output Streams, and Port Binding.
