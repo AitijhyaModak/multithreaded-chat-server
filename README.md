@@ -25,6 +25,7 @@ A real-time chat application built using Java Sockets. This project features a c
 | `/unblock <user>` | Resume seeing messages from a user |
 | `/help` | Show command menu |
 | `/exit` | Safely disconnect from server |
+| `@ <filename>` | Sends and store files in server directory |
 
 ## How to Run
 
